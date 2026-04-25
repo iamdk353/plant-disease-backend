@@ -20,7 +20,7 @@ from app.config import (
     MODEL_PATH,
 )
 from app.state import state
-from app.routes import predict, upload, utility, user, activities, ai
+from app.routes import predict, upload, utility, user, activities, ai, weather
 
 
 @asynccontextmanager
@@ -108,6 +108,7 @@ app.include_router(upload.router)
 app.include_router(predict.router)
 app.include_router(activities.router)
 app.include_router(ai.router)
+app.include_router(weather.router)
 
 
 if __name__ == "__main__":
