@@ -18,7 +18,11 @@ async def get_activity_image(object_name: str):
     try:
         data = fetch_from_oci(object_name)
         mt, _ = mimetypes.guess_type(object_name)
-        return Response(content=data, media_type=mt or "image/jpeg")
+        return Response(
+            content=data,
+            media_type=mt or "image/jpeg",
+            headers={"ngrok-skip-browser-warning": "true"}  # ← add this
+        )
     except HTTPException:
         raise
     except Exception as e:
