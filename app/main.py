@@ -96,7 +96,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-      allow_origins=["https://agrinex-sage.vercel.app","https://agrinexai.vercel.app/"],
+      allow_origins=["https://agrinex-sage.vercel.app","https://agrinexai.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
