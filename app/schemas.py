@@ -1,7 +1,7 @@
 from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Prediction(BaseModel):
@@ -51,12 +51,11 @@ class RegisterUserRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     firebase_uid: str
     email: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 # ─── Activity Schemas ───────────────────────────────────────────────
