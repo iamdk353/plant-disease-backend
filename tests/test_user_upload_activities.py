@@ -54,8 +54,20 @@ class FakeUploadFile:
         return self._data
 
 
+class FakeRequest:
+    def __init__(self, form_data=None):
+        self._form_data = form_data or {}
+
+    async def form(self):
+        return self._form_data
+
+    def url_for(self, name, **kwargs):
+        object_name = kwargs.get("object_name", "photo.jpg")
+        return f"http://test/{object_name}"
+
+
 def test_register_user_creates_new_user():
-    db = FakeDB([None])
+    db = FakeDB([None, None])
 
     response = asyncio.run(
         user.register_user(RegisterUserRequest(firebase_uid="firebase-1", email="a@b.com"), db=db)
@@ -64,6 +76,34 @@ def test_register_user_creates_new_user():
     assert response.firebase_uid == "firebase-1"
     assert response.email == "a@b.com"
     assert any(isinstance(item, User) for item in db.added)
+
+
+def test_register_user_saves_profile_fields_from_body_aliases():
+    db = FakeDB([None, None])
+
+    response = asyncio.run(
+        user.register_user(
+            RegisterUserRequest(
+                firebaseUid="firebase-1",
+                email="farmer@example.com",
+                name="Abhinav",
+                phoneNumber="9876543210",
+                yearsOfExp=6,
+                acres=3.5,
+                primaryCrops=["rice", "wheat"],
+                soilType="loamy",
+            ),
+            db=db,
+        )
+    )
+
+    assert response.firebase_uid == "firebase-1"
+    assert response.name == "Abhinav"
+    assert response.phone_number == "9876543210"
+    assert response.years_of_experience == 6
+    assert response.acres == 3.5
+    assert response.primary_crops == ["rice", "wheat"]
+    assert response.soil_type == "loamy"
 
 
 def test_register_user_returns_existing_user():
@@ -75,6 +115,109 @@ def test_register_user_returns_existing_user():
     )
 
     assert response is existing
+
+
+def test_create_user_profile_returns_and_saves_profile_fields():
+    db = FakeDB([None, None])
+    request = FakeRequest(
+        {
+            "uid": "firebase-1",
+            "name": "Abhinav",
+            "email": "farmer@example.com",
+            "phoneNumber": "9876543210",
+            "yearsOfExp": "8",
+            "acres": "4.25",
+            "primaryCrops": "rice, wheat, ",
+            "soilType": "black soil",
+        }
+    )
+
+    response = asyncio.run(
+        user.create_user_profile(
+            request=request,
+            uid=None,
+            name=None,
+            email=None,
+            phone_number=None,
+            years_of_experience=None,
+            acres=None,
+            primary_crops=None,
+            soil_type=None,
+            photo=None,
+            db=db,
+        )
+    )
+
+    saved_user = next(item for item in db.added if isinstance(item, User))
+    assert saved_user.phone_number == "9876543210"
+    assert saved_user.years_of_experience == 8
+    assert saved_user.acres == 4.25
+    assert saved_user.primary_crops == ["rice", "wheat"]
+    assert saved_user.soil_type == "black soil"
+
+    assert response.phone_number == "9876543210"
+    assert response.years_of_experience == 8
+    assert response.acres == 4.25
+    assert response.primary_crops == ["rice", "wheat"]
+    assert response.soil_type == "black soil"
+
+
+def test_update_user_profile_can_clear_and_replace_profile_fields():
+    existing_user = User(
+        firebase_uid="firebase-1",
+        email="farmer@example.com",
+        name="Old Name",
+        phone_number="1111111111",
+        years_of_experience=3,
+        acres=1.0,
+        primary_crops=["rice"],
+        soil_type="clay",
+    )
+    existing_user.id = uuid.uuid4()
+    db = FakeDB([existing_user])
+    request = FakeRequest(
+        {
+            "name": "",
+            "email": "",
+            "phoneNumber": "",
+            "yearsOfExperience": "9",
+            "acres": "6.5",
+            "primaryCrops": "corn,soybean",
+            "soilType": "loamy",
+        }
+    )
+
+    response = asyncio.run(
+        user.update_user_profile(
+            uid="firebase-1",
+            request=request,
+            name=None,
+            email=None,
+            phone_number=None,
+            years_of_experience=None,
+            acres=None,
+            primary_crops=None,
+            soil_type=None,
+            photo=None,
+            db=db,
+        )
+    )
+
+    assert existing_user.name is None
+    assert existing_user.email is None
+    assert existing_user.phone_number is None
+    assert existing_user.years_of_experience == 9
+    assert existing_user.acres == 6.5
+    assert existing_user.primary_crops == ["corn", "soybean"]
+    assert existing_user.soil_type == "loamy"
+
+    assert response.name is None
+    assert response.email is None
+    assert response.phone_number is None
+    assert response.years_of_experience == 9
+    assert response.acres == 6.5
+    assert response.primary_crops == ["corn", "soybean"]
+    assert response.soil_type == "loamy"
 
 
 def test_upload_image_success(monkeypatch):

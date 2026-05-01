@@ -18,6 +18,25 @@ async def init_models():
     async with engine.begin() as conn:
         # Create all tables (does not drop existing ones)
         await conn.run_sync(Base.metadata.create_all)
+
+        # Backfill schema changes for existing databases
+        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;")
+        await conn.exec_driver_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_object_name TEXT;"
+        )
+        await conn.exec_driver_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number TEXT;"
+        )
+        await conn.exec_driver_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS years_of_experience SMALLINT;"
+        )
+        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN IF NOT EXISTS acres FLOAT;")
+        await conn.exec_driver_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_crops JSONB;"
+        )
+        await conn.exec_driver_sql(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS soil_type TEXT;"
+        )
     print("[OK] Tables created successfully!")
 
 

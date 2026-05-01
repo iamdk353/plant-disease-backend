@@ -14,13 +14,13 @@ from app.db_models import User, Upload as DbUpload
 router = APIRouter(tags=["Upload"])
 
 
-@router.post("/upload", response_model=UploadResponse)
-async def upload_image(
-    uid: str = Form(..., description="User ID associated with the upload required to trace the image"),
-    file: UploadFile = File(..., description="Plant image to upload to OCI"),
-    db: AsyncSession = Depends(get_db)
-):
-    """Upload image to OCI bucket and save metadata to database. Returns `object_name` to pass to `/predict`."""
+async def upload_image_for_user(
+    *,
+    uid: str,
+    file: UploadFile,
+    db: AsyncSession,
+    user: User | None = None,
+) -> tuple[str, str]:
     if not uid or not uid.strip():
         raise HTTPException(status_code=400, detail="uid parameter is mandatory and cannot be empty")
 
@@ -30,10 +30,10 @@ async def upload_image(
     if file.content_type and not file.content_type.startswith("image/"):
         raise HTTPException(status_code=415, detail=f"Unsupported media type: {file.content_type}")
 
-    # Ensure the user exists
-    stmt = select(User).where(User.firebase_uid == uid)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
+    if user is None:
+        stmt = select(User).where(User.firebase_uid == uid)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=404, detail=f"User with uid '{uid}' not found.")
@@ -45,8 +45,8 @@ async def upload_image(
         if not file_content:
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
-        ext          = Path(file.filename).suffix.lower() if file.filename else ""
-        object_name  = f"{uid}_{uuid.uuid4()}{ext}"
+        ext = Path(file.filename).suffix.lower() if file.filename else ""
+        object_name = f"{uid}_{uuid.uuid4()}{ext}"
 
         client.put_object(
             namespace,
@@ -56,7 +56,6 @@ async def upload_image(
             content_type=file.content_type,
         )
 
-        # Save metadata to database
         new_upload = DbUpload(
             user_id=user.id,
             object_name=object_name,
@@ -64,20 +63,32 @@ async def upload_image(
             original_filename=file.filename,
             content_type=file.content_type,
             file_size_bytes=len(file_content),
-            status="uploaded"
+            status="uploaded",
         )
         db.add(new_upload)
 
-        return UploadResponse(
-            status="success",
-            object_name=object_name,
-            bucket=OCI_BUCKET,
-            message=f"Successfully uploaded {object_name} to {OCI_BUCKET}",
-        )
+        return object_name, OCI_BUCKET
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"OCI Upload failed: {exc}")
+
+
+@router.post("/upload", response_model=UploadResponse)
+async def upload_image(
+    uid: str = Form(..., description="User ID associated with the upload required to trace the image"),
+    file: UploadFile = File(..., description="Plant image to upload to OCI"),
+    db: AsyncSession = Depends(get_db)
+):
+    """Upload image to OCI bucket and save metadata to database. Returns `object_name` to pass to `/predict`."""
+    object_name, bucket = await upload_image_for_user(uid=uid, file=file, db=db)
+
+    return UploadResponse(
+        status="success",
+        object_name=object_name,
+        bucket=bucket,
+        message=f"Successfully uploaded {object_name} to {bucket}",
+    )
 
 
 @router.get("/uploads/{uid}", response_model=UserUploadsResponse)

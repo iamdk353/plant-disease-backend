@@ -1,7 +1,7 @@
 from typing import Optional, Union
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class Prediction(BaseModel):
@@ -46,8 +46,34 @@ class HealthResponse(BaseModel):
 
 
 class RegisterUserRequest(BaseModel):
-    firebase_uid: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    firebase_uid: str = Field(
+        validation_alias=AliasChoices("firebase_uid", "firebaseUid", "uid")
+    )
     email: Optional[str] = None
+    name: Optional[str] = None
+    phone_number: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("phone_number", "phoneNumber"),
+    )
+    years_of_experience: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "years_of_experience",
+            "yearsOfExperience",
+            "yearsOfExp",
+        ),
+    )
+    acres: Optional[float] = None
+    primary_crops: Optional[Union[list[str], str]] = Field(
+        default=None,
+        validation_alias=AliasChoices("primary_crops", "primaryCrops"),
+    )
+    soil_type: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("soil_type", "soilType"),
+    )
 
 
 class UserResponse(BaseModel):
@@ -56,6 +82,29 @@ class UserResponse(BaseModel):
     id: UUID
     firebase_uid: str
     email: Optional[str]
+    name: Optional[str] = None
+    photo_object_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    years_of_experience: Optional[int] = None
+    acres: Optional[float] = None
+    primary_crops: Optional[list[str]] = None
+    soil_type: Optional[str] = None
+
+
+class UserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    firebase_uid: str
+    email: Optional[str]
+    name: Optional[str] = None
+    photo_object_name: Optional[str] = None
+    photo_url: Optional[str] = None
+    phone_number: Optional[str] = None
+    years_of_experience: Optional[int] = None
+    acres: Optional[float] = None
+    primary_crops: Optional[list[str]] = None
+    soil_type: Optional[str] = None
 
 
 # ─── Activity Schemas ───────────────────────────────────────────────

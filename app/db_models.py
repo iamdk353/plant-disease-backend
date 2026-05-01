@@ -24,6 +24,13 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     firebase_uid = Column(Text, unique=True, nullable=False)
     email = Column(Text)
+    name = Column(Text)
+    photo_object_name = Column(Text)
+    phone_number = Column(Text)
+    years_of_experience = Column(SmallInteger)
+    acres = Column(Float)
+    primary_crops = Column(JSONB)
+    soil_type = Column(Text)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(
         TIMESTAMP(timezone=True),

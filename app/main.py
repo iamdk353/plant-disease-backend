@@ -96,13 +96,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-      allow_origins=["https://agrinex-sage.vercel.app","https://agrinexai.vercel.app"],
+      allow_origins=["https://agrinex-sage.vercel.app","https://agrinexai.vercel.app","http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
 )
 
 app.include_router(user.router)
+app.include_router(user.users_router)
 app.include_router(utility.router)
 app.include_router(upload.router)
 app.include_router(predict.router)
